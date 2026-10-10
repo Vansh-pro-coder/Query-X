@@ -1,0 +1,4 @@
+PyMuPDF
+google-genai
+python-dotenv
+chromadb
