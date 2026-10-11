@@ -1,4 +1,6 @@
-PyMuPDF
-google-genai
+Flask
 python-dotenv
+google-genai
 chromadb
+pypdf
+numpy

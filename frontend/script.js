@@ -24,8 +24,8 @@ const CONFIG = {
   API_URL: "/api/chat",          // Python endpoint that answers questions
   FEEDBACK_URL: "/api/feedback", // Python endpoint that stores thumbs up/down
   PDF_BASE_URL: "/pdf/",         // Where PDFs are served from (see server.py)
-  USE_MOCK: true,                // true = fake answers (demo). Set false when backend is ready
-  TIMEOUT_MS: 30000,             // give up if backend takes longer than 30 seconds
+  USE_MOCK: false,                // true = fake answers (demo). Set false when backend is ready
+  TIMEOUT_MS: 90000,             // give up if backend takes longer than 30 seconds
   HISTORY_TURNS: 6,              // how many previous messages we send for follow-up questions
 };
 
@@ -38,14 +38,20 @@ try {
 /* ---------- 2. TEXT (English + Hindi) ---------- */
 const TEXT = {
   en: {
-    placeholder: "Ask anything about your campus...",
+    placeholder: "Ask me anything",
     hint: "Enter to send · Shift + Enter for a new line",
-    tip: "You can also ask in Hindi, e.g. “कैंपस इवेंट कब है?”",
+    tip: "Ask a question, explore an idea, or get help with a task.”",
     you: "You",
     bot: "Query-X",
     welcomeTitle: "Hi! I'm Query-X 👋",
-    welcomeBody: "Ask me anything about your campus. My answers come from the college documents, and I'll show you the source.",
-    suggestions: ["Where can I find information about the campus event?", "What are the hostel facilities?", "When is the exam schedule?"],
+    welcomeBody: "Your AI assistant for ideas, planning, learning, and everyday questions. What would you like to explore today",
+    // suggestions: ["Where can I find information about the campus event?", "What are the hostel facilities?", "When is the exam schedule?"],
+    suggestions: [
+  "What's your plan for today?",
+  "Give me some ideas for today",
+  "Teach me something interesting",
+    "Help me plan my day"
+    ],
     emptyChats: "No chats yet",
     newChat: "New chat",
     fallback: "I couldn't find this in the documents I have, so I don't want to guess. Try rephrasing the question or ask about something else.",
@@ -139,6 +145,86 @@ function el(tag, className, text) {
 const uid = () => "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const fmtTime = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const activeChat = () => state.chats.find((c) => c.id === state.activeId);
+
+function renderMarkdown(text) {
+  const container = document.createElement("div");
+  const lines = String(text || "").replace(/\\([*`])/g, "$1").split(/\r?\n/);
+
+  let list = null;
+
+  function flushList() {
+    if (list) {
+      container.appendChild(list);
+      list = null;
+    }
+  }
+
+  function addInlineText(parent, value) {
+    // Supports **bold** and *italic* without interpreting HTML.
+    const pattern = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = pattern.exec(value)) !== null) {
+      if (match.index > lastIndex) {
+        parent.appendChild(document.createTextNode(
+          value.slice(lastIndex, match.index)
+        ));
+      }
+
+      const isBold = match[0].startsWith("**");
+      const markerLength = isBold ? 2 : 1;
+      const tag = document.createElement(isBold ? "strong" : "em");
+      tag.textContent = match[0].slice(markerLength, -markerLength);
+      parent.appendChild(tag);
+      lastIndex = pattern.lastIndex;
+    }
+
+    if (lastIndex < value.length) {
+      parent.appendChild(
+        document.createTextNode(value.slice(lastIndex))
+      );
+    }
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushList();
+      continue;
+    }
+
+    const bulletMatch = line.match(/^[-*]\s+(.+)$/);
+    const numberedMatch = line.match(/^\d+[.)]\s+(.+)$/);
+    const match = bulletMatch || numberedMatch;
+
+    if (match) {
+      const isNumbered = Boolean(numberedMatch);
+      const tag = isNumbered ? "ol" : "ul";
+
+      if (!list || list.tagName.toLowerCase() !== tag) {
+        flushList();
+        list = document.createElement(tag);
+      }
+
+      const item = document.createElement("li");
+      addInlineText(item, match[1]);
+      list.appendChild(item);
+      continue;
+    }
+
+    flushList();
+
+    const paragraph = document.createElement("p");
+    addInlineText(paragraph, line);
+    container.appendChild(paragraph);
+  }
+
+  flushList();
+  return container;
+}
+
 
 /* ---------- 5. TALKING TO THE BACKEND ---------- */
 /*
@@ -361,7 +447,17 @@ function buildMessage(m, index, chat) {
   who.appendChild(el("strong", "", isBot ? t("bot") : t("you")));
   who.appendChild(el("span", "", fmtTime(m.time)));
   wrap.appendChild(who);
-  wrap.appendChild(el("div", "bubble", m.text));
+  // wrap.appendChild(el("div", "bubble", m.text));
+  const bubble = el("div", "bubble");
+
+if (isBot) {
+  // bubble.innerHTML = renderMarkdown(m.text);
+  bubble.appendChild(renderMarkdown(m.text));
+} else {
+  bubble.textContent = m.text;
+}
+
+wrap.appendChild(bubble);
 
   if (isBot) {
     // Inline sources: click the line to expand and read the exact passage
@@ -593,8 +689,125 @@ function updateStatusBadge() {
   $("statusText").textContent = CONFIG.USE_MOCK ? "Demo mode" : "Online";
 }
 
+function applyTheme(theme) {
+  const isDark = theme === "dark";
+
+  document.body.classList.toggle("dark-theme", isDark);
+  localStorage.setItem("queryx-theme", isDark ? "dark" : "light");
+
+  const settingsToggle = $("darkThemeToggle");
+  if (settingsToggle) {
+    settingsToggle.checked = isDark;
+  }
+
+  const headerToggle = $("themeToggle");
+  if (headerToggle) {
+    headerToggle.textContent = isDark ? "☀️" : "🌙";
+    headerToggle.title = isDark ? "Switch to light theme" : "Switch to dark theme";
+    headerToggle.setAttribute(
+      "aria-label",
+      isDark ? "Switch to light theme" : "Switch to dark theme"
+    );
+  }
+}
+
+// function applyTheme(theme) {
+//   const isDark = theme === "dark";
+
+//   document.body.classList.toggle("dark-theme", isDark);
+
+//   const toggle = $("darkThemeToggle");
+//   if (toggle) {
+//     toggle.checked = isDark;
+//   }
+
+//  localStorage.setItem("queryx-theme", isDark ? "dark" : "light");
+// }
+// function init() {
+//   loadState();
+//   $("darkThemeToggle").addEventListener("change", (event) => {
+//   applyTheme(event.target.checked ? "dark" : "light");
+//   });
+
+//   applyTheme(localStorage.getItem("queryx-theme") || "light");
+//   // After a page refresh, open the last chat that was active
+//   if (!activeChat()) state.activeId = null;
+// // function applyTheme(theme) {
+// //   const isDark = theme === "dark";
+
+// //   document.body.classList.toggle("dark-theme", isDark);
+
+// //   const toggle = $("darkThemeToggle");
+// //   if (toggle) {
+// //     toggle.checked = isDark;
+// //   }
+
+// //   localStorage.setItem("queryx-theme", isDark ? "dark" : "light");
+// // }
+//   // --- Keyboard: Enter sends, Shift+Enter makes a new line ---
+//   $("input").addEventListener("keydown", (e) => {
+//     // e.isComposing = user is still choosing characters with an IME keyboard (Hindi etc.)
+//     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+//       e.preventDefault();          // stop the new line
+//       sendMessage($("input").value);
+//     }
+//   });
+//   $("input").addEventListener("input", autoGrow);
+
+//   // --- Buttons ---
+//   $("sendBtn").addEventListener("click", () => sendMessage($("input").value));
+//   $("micBtn").addEventListener("click", toggleVoice);
+//   $("newChatBtn").addEventListener("click", newChat);
+//   $("clearHistoryBtn").addEventListener("click", clearHistory);
+//   $("menuBtn").addEventListener("click", openSidebar);
+//   $("overlay").addEventListener("click", closeSidebar);
+
+//   $("langSelect").addEventListener("change", (e) => { state.lang = e.target.value; applyLanguage(); });
+
+//   // --- Settings popup ---
+//   $("settingsBtn").addEventListener("click", () => {
+//     $("darkThemeToggle").checked =localStorage.getItem("queryx-theme") === "dark";
+//     $("mockToggle").checked = CONFIG.USE_MOCK;
+//     $("apiUrlInput").value = CONFIG.API_URL;
+//     $("settingsDialog").showModal();
+//   });
+
+// $("darkThemeToggle").addEventListener("change", (event) => {
+//   applyTheme(event.target.checked ? "dark" : "light");
+// });
+
+// applyTheme(localStorage.getItem("queryx-theme") || "light");
+
+//   $("settingsDialog").addEventListener("close", () => {
+//     CONFIG.USE_MOCK = $("mockToggle").checked;
+//     CONFIG.API_URL = $("apiUrlInput").value.trim() || "/api/chat";
+//     localStorage.setItem("queryx-config", JSON.stringify({ USE_MOCK: CONFIG.USE_MOCK, API_URL: CONFIG.API_URL }));
+//     updateStatusBadge();
+//   });
+
+//   updateStatusBadge();
+//   applyLanguage();
+//   updateSendState();
+// }
+
+// init();
+
 function init() {
   loadState();
+
+  // Apply the saved theme when the page loads
+  applyTheme(localStorage.getItem("queryx-theme") || "light");
+
+  // Settings switch
+$("darkThemeToggle").addEventListener("change", (event) => {
+  applyTheme(event.target.checked ? "dark" : "light");
+});
+
+// Moon/sun button in the chat header
+$("themeToggle").addEventListener("click", () => {
+  const isDark = document.body.classList.contains("dark-theme");
+  applyTheme(isDark ? "light" : "dark");
+});
   // After a page refresh, open the last chat that was active
   if (!activeChat()) state.activeId = null;
 
@@ -602,10 +815,11 @@ function init() {
   $("input").addEventListener("keydown", (e) => {
     // e.isComposing = user is still choosing characters with an IME keyboard (Hindi etc.)
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
-      e.preventDefault();          // stop the new line
+      e.preventDefault();
       sendMessage($("input").value);
     }
   });
+
   $("input").addEventListener("input", autoGrow);
 
   // --- Buttons ---
@@ -616,18 +830,39 @@ function init() {
   $("menuBtn").addEventListener("click", openSidebar);
   $("overlay").addEventListener("click", closeSidebar);
 
-  $("langSelect").addEventListener("change", (e) => { state.lang = e.target.value; applyLanguage(); });
+  $("langSelect").addEventListener("change", (e) => {
+    state.lang = e.target.value;
+    applyLanguage();
+  });
 
   // --- Settings popup ---
   $("settingsBtn").addEventListener("click", () => {
+    $("darkThemeToggle").checked =
+      localStorage.getItem("queryx-theme") === "dark";
+
     $("mockToggle").checked = CONFIG.USE_MOCK;
     $("apiUrlInput").value = CONFIG.API_URL;
     $("settingsDialog").showModal();
   });
+
+  // --- Dark theme toggle ---
+  $("darkThemeToggle").addEventListener("change", (event) => {
+    applyTheme(event.target.checked ? "dark" : "light");
+  });
+
+  // --- Settings popup close ---
   $("settingsDialog").addEventListener("close", () => {
     CONFIG.USE_MOCK = $("mockToggle").checked;
     CONFIG.API_URL = $("apiUrlInput").value.trim() || "/api/chat";
-    localStorage.setItem("queryx-config", JSON.stringify({ USE_MOCK: CONFIG.USE_MOCK, API_URL: CONFIG.API_URL }));
+
+    localStorage.setItem(
+      "queryx-config",
+      JSON.stringify({
+        USE_MOCK: CONFIG.USE_MOCK,
+        API_URL: CONFIG.API_URL
+      })
+    );
+
     updateStatusBadge();
   });
 

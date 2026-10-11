@@ -290,3 +290,151 @@ button { cursor: pointer; }
   .messages { padding: 14px; }
   .composer { padding: 10px 12px 14px; }
 }
+
+/* Dark Theme setting row */
+.theme-setting {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 16px 0;
+}
+
+.theme-setting > label:first-child {
+  font-weight: 600;
+}
+
+/* Toggle switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  background: #c8c8d2;
+  border-radius: 24px;
+  transition: 0.2s;
+}
+
+.switch-slider::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+
+.switch input:checked + .switch-slider {
+  background: var(--primary);
+}
+
+.switch input:checked + .switch-slider::before {
+  transform: translateX(20px);
+}
+
+.switch input:focus-visible + .switch-slider {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+/* ================= DARK THEME ================= */
+
+body.dark-theme {
+  --primary: #8b78f6;
+  --primary-dark: #a99aff;
+  --primary-soft: #302a49;
+  --bg: #111318;
+  --card: #191b23;
+  --text: #e6e7ed;
+  --muted: #a4a8b7;
+  --border: #303441;
+  --warn-bg: #332d1e;
+  --warn-border: #76612c;
+  --error-bg: #382326;
+  --error-border: #754047;
+}
+
+body.dark-theme .sidebar,
+body.dark-theme .sources,
+body.dark-theme .chat-header,
+body.dark-theme .msg.bot .bubble,
+body.dark-theme .source-card,
+body.dark-theme .chip,
+body.dark-theme .chat-item,
+body.dark-theme .composer-box,
+body.dark-theme .dialog {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+body.dark-theme .chat-header,
+body.dark-theme .composer {
+  background: var(--bg);
+  border-color: var(--border);
+}
+
+body.dark-theme .brand-name,
+body.dark-theme .header-title h2,
+body.dark-theme .panel-title,
+body.dark-theme .welcome h3,
+body.dark-theme .who,
+body.dark-theme .muted,
+body.dark-theme .hint,
+body.dark-theme .side-title,
+body.dark-theme .brand-tag {
+  color: var(--text);
+}
+
+body.dark-theme .msg.user .bubble {
+  background: #302a49;
+  color: #fff;
+}
+
+body.dark-theme .composer textarea,
+body.dark-theme .lang-select,
+body.dark-theme .dialog input[type="text"] {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+body.dark-theme .icon-btn,
+body.dark-theme .act,
+body.dark-theme .link-btn,
+body.dark-theme .settings-btn {
+  color: var(--text);
+}
+
+body.dark-theme .src-inline details,
+body.dark-theme .source-card .snippet {
+  background: #222530;
+  color: var(--text);
+}
+
+body.dark-theme .tip {
+  background: #302a1b;
+  color: #f1dfac;
+  border-color: #66552b;
+}
+
+body.dark-theme .dialog::backdrop {
+  background: rgb(0 0 0 / 65%);
+}

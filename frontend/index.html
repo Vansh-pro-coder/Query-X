@@ -35,7 +35,9 @@
         <div class="brand-logo" aria-hidden="true">Q</div>
         <div>
           <h1 class="brand-name">Query-X</h1>
-          <p class="brand-tag">Your Campus AI Assistant</p>
+          <!-- <p class="brand-tag">Your Campus AI Assistant</p> -->
+
+          <p class="brand-tag">Your Campus Knowledge Assistant</p>
         </div>
       </div>
 
@@ -77,14 +79,22 @@
         <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
 
         <div class="header-title">
-          <h2>Campus Assistant</h2>
+          <h2>Query-X</h2>
         </div>
 
         <!-- Language selector: used for voice input AND sent to the backend -->
         <select id="langSelect" class="lang-select" aria-label="Language">
+          
           <option value="en">English</option>
           <option value="hi">हिन्दी</option>
         </select>
+        <button
+  class="icon-btn theme-toggle"
+  id="themeToggle"
+  type="button"
+  aria-label="Switch to dark theme"
+  title="Switch theme"
+>🌙</button>
 
         <span class="status" id="statusBadge"><i class="dot"></i><span id="statusText">Online</span></span>
       </header>
@@ -99,7 +109,9 @@
           <button class="icon-btn" id="attachBtn" title="Upload PDF (coming soon)" disabled>📎</button>
 
           <!-- Enter = send, Shift+Enter = new line (handled in script.js) -->
-          <textarea id="input" rows="1" placeholder="Ask anything about your campus..." aria-label="Type your question"></textarea>
+          <!-- <textarea id="input" rows="1" placeholder="Ask anything about your campus..." aria-label="Type your question"></textarea> -->
+
+          <textarea id="input" rows="1" placeholder="Ask a question about your college documents..." aria-label="Type your question"></textarea>
 
           <!-- Voice input (Web Speech API) -->
           <button class="icon-btn" id="micBtn" title="Speak your question" aria-label="Voice input">🎤</button>
@@ -122,7 +134,7 @@
 
       <div class="tip">
         <strong>💡 Tip</strong>
-        <p id="tipText">You can also ask in Hindi, e.g. “कैंपस इवेंट कब है?”</p>
+        <p id="tipText">Ask in English or Hindi. Answers are grounded in available college documents.</p>
       </div>
     </aside>
   </div>
@@ -133,6 +145,14 @@
   <dialog id="settingsDialog" class="dialog">
     <form method="dialog">
       <h3>Settings</h3>
+      <div class="field theme-setting">
+        
+  <label for="darkThemeToggle">Dark Theme</label>
+  <label class="switch">
+    <input type="checkbox" id="darkThemeToggle">
+    <span class="switch-slider"></span>
+  </label>
+</div>
 
       <label class="field">
         <input type="checkbox" id="mockToggle" />

@@ -38,24 +38,38 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+# import flask
 
 # Find the main Query-X project directory
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# PROJECT_ROOT = Path(__file__).resolve().parent
 
-# Allow Python to import the project's src package
+# if str(PROJECT_ROOT) not in sys.path:
+#     sys.path.insert(0, str(PROJECT_ROOT))
+
+
+# app = Flask(
+#     __name__,
+#     static_folder=str(PROJECT_ROOT),
+#     static_url_path=""
+# )
+
+# PDF_FOLDER = PROJECT_ROOT / "data" / "raw"# <-- put your PDF files in a folder with this name
+FRONTEND_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = FRONTEND_DIR.parent
+
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from flask import Flask, jsonify, request, send_from_directory
-from src.chatbot import get_chatbot_response
+from src.retrieval.retriever import retrieve_chunks
+from src.generation.answer_generator import generate_answer
+app = Flask(
+    __name__,
+    static_folder=str(FRONTEND_DIR),
+    static_url_path=""
+)
 
-
-
-# static_folder="." means: serve the html/css/js files sitting next to this file
-app = Flask(__name__, static_folder=".", static_url_path="")
-
-PDF_FOLDER = "docs"  # <-- put your PDF files in a folder with this name
-
+PDF_FOLDER = PROJECT_ROOT / "data" / "raw"
 
 # ---------------------------------------------------------------------------
 # STEP 1 (YOUR JOB): connect your existing RAG code here
@@ -99,17 +113,37 @@ PDF_FOLDER = "docs"  # <-- put your PDF files in a folder with this name
 # from src.chatbot import get_chatbot_response
 
 
-def get_rag_answer(question, language="English", history=None):
-    """Connect the frontend request to the existing RAG chatbot."""
+def get_rag_answer(question, language="en", history=None):
+    chunks = retrieve_chunks(question)
 
-    result = get_chatbot_response(question)
+    if not chunks:
+        return {
+            "answer": "I couldn't find that information in the indexed documents.",
+            "supported": False,
+            "sources": []
+        }
+
+    answer = generate_answer(question, chunks)
+    answer_lower = answer.lower()
+    supported = (
+        "couldn't find" not in answer_lower
+        and "could not find" not in answer_lower
+    )
+
+    sources = [
+        {
+            "file": chunk.get("source", "Unknown source"),
+            "page": chunk.get("page"),
+            "snippet": chunk.get("text", "")
+        }
+        for chunk in chunks
+    ]
 
     return {
-        "answer": result["answer"],
-        "supported": result["supported"],
-        "sources": result["sources"]
+        "answer": answer,
+        "supported": supported,
+        "sources": sources
     }
-
     # Example of how it could look (uncomment and adapt):
     #
     # from my_rag import answer_question        # <- your existing file
@@ -130,10 +164,15 @@ def get_rag_answer(question, language="English", history=None):
 # ---------------------------------------------------------------------------
 # Routes (you normally don't need to edit below this line)
 # ---------------------------------------------------------------------------
+# @app.route("/")
+# def home():
+#     return send_from_directory(".", "index.html")
+# @app.route("/")
+# def home():
+#     return send_from_directory(str(PROJECT_ROOT), "index.html")
 @app.route("/")
 def home():
-    return send_from_directory(".", "index.html")
-
+    return send_from_directory(str(FRONTEND_DIR), "index.html")
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
@@ -159,15 +198,23 @@ def feedback():
     """Appends every thumbs up/down to feedback.jsonl so you can review it later."""
     data = request.get_json(silent=True) or {}
     data["time"] = datetime.now().isoformat()
-    with open("feedback.jsonl", "a", encoding="utf-8") as f:
+    # with open("feedback.jsonl", "a", encoding="utf-8") as f:
+    with open(PROJECT_ROOT / "feedback.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(data, ensure_ascii=False) + "\n")
     return jsonify({"ok": True})
 
 
+# @app.route("/pdf/<path:name>")
+# def pdf(name):
+#     return send_from_directory(os.path.abspath(PDF_FOLDER), name)
+
 @app.route("/pdf/<path:name>")
 def pdf(name):
-    return send_from_directory(os.path.abspath(PDF_FOLDER), name)
-
+    return send_from_directory(
+        str(PDF_FOLDER),
+        name,
+        as_attachment=False
+    )
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
